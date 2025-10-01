@@ -53,4 +53,40 @@ def parse_capacities_export_zip(zip_path: str) -> pd.DataFrame:
                     }
                 )
 
+    # Add the date column from `properties`, and make it a datetime
+    for entry in data:
+        entry["date"] = pd.to_datetime(entry["properties"].get("date", None))
+
     return pd.DataFrame(data)
+
+
+def export_notes_to_markdown(df: pd.DataFrame) -> str:
+    """
+    Concatenate all notes from the DataFrame into a single Markdown string, sorted by date ascending.
+
+    Args:
+        df (pd.DataFrame): DataFrame from parse_capacities_export_zip
+
+    Returns:
+        str: Concatenated Markdown string of all notes
+    """
+    # Sort by the 'date' column, ensuring all datetimes are tz-naive to avoid comparison errors
+    df = df.copy()
+    if "date" in df.columns:
+        # Convert all datetimes to tz-naive (remove timezone info)
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").apply(
+            lambda x: (
+                x.tz_localize(None)
+                if pd.notnull(x) and hasattr(x, "tzinfo") and x.tzinfo is not None
+                else x
+            )
+        )
+        df = df.sort_values("date", ascending=True)
+
+    markdown_content = []
+    for _, row in df.iterrows():
+        title = row["title"]
+        content = row["text_content"]
+        markdown_content.append(f"# {title}\n\n{content}\n\n---\n\n")
+
+    return "".join(markdown_content)
