@@ -50,12 +50,18 @@ def parse_capacities_export_zip(zip_path: str) -> pd.DataFrame:
                         "title": properties.get("title", Path(md_file).stem),
                         "properties": properties,
                         "text_content": parts[2].strip(),
+                        "file_name": Path(md_file).name,
                     }
                 )
 
     # Add the date column from `properties`, and make it a datetime
     for entry in data:
-        entry["date"] = pd.to_datetime(entry["properties"].get("date", None))
+        date_str = entry["properties"].get("date", None)
+        # Try to parse the date, but if it fails (e.g., "2025-01-27 11:00 - 11:30"), set as NaT
+        try:
+            entry["date"] = pd.to_datetime(date_str, errors="raise")
+        except Exception:
+            entry["date"] = pd.NaT
 
     return pd.DataFrame(data)
 
